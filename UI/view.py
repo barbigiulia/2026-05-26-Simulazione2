@@ -24,8 +24,8 @@ class View(ft.UserControl):
         self._page.controls.append(self._title)
 
 
-        self._ddrating1 = ft.Dropdown(label="Voto", hint_text="Rating")
-        self._ddrating2 = ft.Dropdown(label="Voto", hint_text="Rating")
+        self._ddrating1 = ft.Dropdown(label="Voto", hint_text="Rating", options=self._controller.fillDDsRating())
+        self._ddrating2 = ft.Dropdown(label="Voto", hint_text="Rating", options=self._controller.fillDDsRating())
 
 
         self._controller.fillDDsRating()
