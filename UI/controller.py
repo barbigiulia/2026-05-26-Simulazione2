@@ -11,7 +11,7 @@ class Controller:
     def fillDDsRating(self):
         res = []
         for r in self._model.getRatings():
-            res.append(ft.dropdown.Option(r))
+            res.append(ft.dropdown.Option(r))   # sarà poi da convertire quando lo passo alla funzione buildGraph()
         return res
 
     def handleCreaGrafo(self, e):
@@ -33,21 +33,29 @@ class Controller:
             self._view.update_page()
             return
         self._model.buildGraph(r1, r2)
-        self._view.txt_result.clean()
+        self._view.txt_result.controls.clear()
         self._view.txt_result.controls.append(ft.Text(f"Numero di nodi: {self._model.getNumNodi()}", color="green"))
         self._view.txt_result.controls.append(ft.Text(f"Numero di archi: {self._model.getNumArchi()}", color="green"))
 
-        archiPesati, numComp, lenPiuLunga, listaNodi = self._model.getPesi()
-        self._view.txt_result.controls.append(ft.Text(f"top 5 archi", color="pink"))
-        for u,v,peso in archiPesati:
-            self._view.txt_result.controls.append(ft.Text(f"{u} --> {v}   peso: {peso}"))
-
-        self._view.txt_result.controls.append(ft.Text(f"Il grafo ha  {numComp} componenti connesse", color="pink"))
-        self._view.txt_result.controls.append(ft.Text(f"La più grande componente connessa è lunga {lenPiuLunga}", color="pink"))
-        for n in listaNodi:
-            self._view.txt_result.controls.append(ft.Text(f"{n}"))
+        lista, numero, piuGrande = self._model.getArchiPesati()
+        self._view.txt_result.controls.append(ft.Text("I 5 archi con peso maggiore", color="orange"))
+        for u,v,peso in lista:
+            self._view.txt_result.controls.append(ft.Text(f"{str(u)} -- {str(v)}     (peso={peso})"))
+        self._view.txt_result.controls.append(ft.Text((f"Il grafo ha {numero} componenti connesse"), color="orange"))
+        self._view.txt_result.controls.append(ft.Text(f"Nodi della componente connessa più grande ({len(piuGrande)} nodi)", color="orange"))
+        for n in piuGrande:
+            self._view.txt_result.controls.append(ft.Text(f"{str(n)}"))
         self._view.update_page()
 
 
     def handleCammino(self, e):
-        pass
+        bestPath = self._model.bestPath()
+        if len(bestPath) == 0:
+            self._view.txt_result.controls.append(ft.Text("Cammino non trovato", color="orange"))
+            self._view.update_page()
+            return
+        self._view.txt_result.controls.append(ft.Text("Cammino semplie di lunghezza massima", color="pink"))
+        self._view.txt_result.controls.append(ft.Text(f"Il cammino ha {len(bestPath)} nodi", color="pink"))
+        for n in bestPath:
+            self._view.txt_result.controls.append(ft.Text(f"{str(n)}"))
+        self._view.update_page()

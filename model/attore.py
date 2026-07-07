@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import date
 
 
-@dataclass(eq=False)
+@dataclass
 
 class Attore:
     id: str
@@ -16,8 +16,6 @@ class Attore:
         return hash(self.id)
 
     def __eq__(self, other):
-        if not isinstance(other, Attore):
-            return False
         return self.id == other.id
 
     def __str__(self):

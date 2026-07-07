@@ -1,62 +1,60 @@
+import copy
 import networkx as nx
-
 from database.DAO import DAO
-
-
 class Model:
     def __init__(self):
         self._grafo = nx.Graph()
-
+        self.mapId = {}
 
 
     def getRatings(self):
         return DAO.getRatings()
 
 
-
     def buildGraph(self,r1,r2):
-        self._grafo.clear() # reset
+        self._grafo.clear()
         nodi = []
+        self.mapId = {}
         for a in DAO.getNodes(r1,r2):
             nodi.append(a)
         self._grafo.add_nodes_from(nodi)
+        for a in nodi:
+            if a.id not in self.mapId:
+                self.mapId[a.id] = a
+
         self.addEdges(r1,r2)
 
     def addEdges(self,r1,r2):
-        incassi = DAO.getIncassi(r1,r2)
-        diz={}
-        MovieIncasso= dict()
-        # attoreID = [(movieID, incasso), (movieID, incasso)...]
-        for attore, movie, incasso in incassi:
-            if attore not in diz:
-                diz[attore]=[]
-            diz[attore].append(movie)
-            MovieIncasso[movie] = incasso
+        diz ={}
+        coppie = DAO.getCoppie(r1,r2)
+        for a1, a2, movie, peso in coppie:
+            if a1 not in self.mapId or a2 not in self.mapId:
+                # il ratings l'ho già controllato nella query (condizione sui nodi)
+                continue
+            attore1 = self.mapId[a1]
+            attore2 = self.mapId[a2]
 
-        nodi = list(self._grafo.nodes)
-        for i in range(len(nodi)):
-            for j in range(i+1, len(nodi)):   # evito coppie di attori duplicati
-                a1 = nodi[i].id
-                a2 = nodi[j].id
-                filmA1 = set()
-                filmA2 = set()
+            # (a1,a2) = [(movie, incasso), (movie, incasso)....]
+            if (attore1, attore2) not in diz:
+                diz[(attore1, attore2)] = []
+                pesoTot = 0
+                if peso is not None:
+                    peso = peso.replace("$", "")
+                    pesoTot += int(peso.replace(" ", ""))
+                diz[(attore1,attore2)].append((movie,pesoTot))
+            else:
+                pesoTot=0
+                if peso is not None:
+                    peso = peso.replace("$", "")
+                    pesoTot += int(peso.replace(" ", ""))
+                diz[(attore1,attore2)].append((movie,pesoTot))
 
-                for a_id in diz:
-                    if a_id == a1:
-                        filmA1.update(diz[a_id])
-                    if a_id == a2:
-                        filmA2.update(diz[a_id])
-                comuni = filmA1.intersection(filmA2)
-                if len(comuni) >0:
-                    peso = 0
-                    for m in comuni:
-                        if MovieIncasso[m] is not None:
-                            try:
-                                valore = MovieIncasso[m].replace("$", "").replace(",", "").strip()
-                                peso += float(valore)
-                            except (ValueError, AttributeError):
-                                pass
-                            self._grafo.add_edge(nodi[i], nodi[j], weight=peso)
+        for attore1,attore2 in diz:
+            incasso = 0
+            for movie, peso in diz[(attore1,attore2)]:
+                incasso += peso
+            self._grafo.add_edge(attore1, attore2, weight=incasso)
+
 
 
     def getNumArchi(self):
@@ -64,60 +62,35 @@ class Model:
     def getNumNodi(self):
         return len(self._grafo.nodes)
 
-
-    def getPesi(self):
-        res=[]
-        for u, v, data in self._grafo.edges(data=True):
+    def getArchiPesati(self):
+        res = []
+        for u,v,data in self._grafo.edges(data=True):
             res.append((u,v,data["weight"]))
         res.sort(key=lambda x: x[2], reverse=True)
-
-        numCompConnesse = nx.number_connected_components(self._grafo)
-        lista = []
-        for c in nx.connected_components(self._grafo):
-            lista.append((c, len(c)))
-        lista.sort(key=lambda x: x[1], reverse=True)
-        lista_nodi = []
-        for n in lista[0][0]:
-            lista_nodi.append(n)
-
-        return res[:5], numCompConnesse, lista[0][1], lista_nodi
-
-    #=================== RICORSIONE ===============================
-    def _PercorsoPiuLungo(self):
+        numero = nx.number_connected_components(self._grafo)
+        componenti = list(nx.connected_components(self._grafo))
+        piuGrande = max(componenti, key=len)
+        return res[:5] , numero, piuGrande
+    # ==============================================
+    # RICORSIONE
+    # ==============================================
+    # cammino semplice di lunghezza massima
+    # ogni nodo successivo ha un'età strett decrescente
+    def bestPath(self):
         self._bestPath = []
-        for n in self._grafo.nodes: # devo partire da ogni nodo del grafo
-            # come nodo iniziale
-            self._ricorsione1([n])
+        for nodo in self._grafo.nodes:  # siccome non ho un nodo di partenza
+            # provo con tutti i nodi del grafo
+            self._ricorsione(nodo, [nodo], nodo.date_of_birth)
         return self._bestPath
 
-    def _ricorsione1(self, parziale):
-        if len(parziale) >len(self._bestPath):
-            self._bestPath = list(parziale)
+    def _ricorsione(self, nodoCorrente, parziale, etaUltimo):
+        if len(parziale) > len(self._bestPath):
+            self._bestPath= copy.deepcopy(parziale)
 
-        ultimo= parziale[-1]
-        for vicino in self._grafo.neighbors(ultimo):
-            if vicino not in parziale:
+
+        for vicino in self._grafo.neighbors(nodoCorrente):
+            if vicino not in parziale and vicino.date_of_birth > etaUltimo:
                 parziale.append(vicino)
-                self._ricorsione1(parziale)
+                self._ricorsione(vicino, parziale, vicino.date_of_birth)
                 parziale.pop()
 
-
-    # ============CAMMINO DI LUNGHEZZA MAX , OGNI NODO CON ETA'STRETT. DECRESCENTE =====
-    def percorsoLunghmax(self):
-        self._bestPath = []
-        for n in self._grafo.nodes: # devo partire da ogni nodo del grafo
-            # come nodo iniziale
-            self._ricorsione2([n])
-        return self._bestPath
-
-    def _ricorsione2(self, parziale):
-        if len(parziale) >len(self._bestPath):
-            self._bestPath = list(parziale)
-
-        ultimo= parziale[-1]
-        for vicino in self._grafo.neighbors(ultimo):
-            if vicino not in parziale:
-                if vicino.date_of_birth > ultimo.date_of_birth:
-                    parziale.append(vicino)
-                    self._ricorsione2(parziale)
-                    parziale.pop()
