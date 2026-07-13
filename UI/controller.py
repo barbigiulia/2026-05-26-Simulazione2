@@ -22,7 +22,7 @@ class Controller:
             self._view.update_page()
             return
         try:
-            r1=float(r1)
+            r1=float(r1)   # è un decimale!!!
             r2=float(r2)
         except ValueError:
             self._view.txt_result.controls.append(ft.Text("Numeri non validi", color="red"))
@@ -37,25 +37,24 @@ class Controller:
         self._view.txt_result.controls.append(ft.Text(f"Numero di nodi: {self._model.getNumNodi()}", color="green"))
         self._view.txt_result.controls.append(ft.Text(f"Numero di archi: {self._model.getNumArchi()}", color="green"))
 
-        lista, numero, piuGrande = self._model.getArchiPesati()
-        self._view.txt_result.controls.append(ft.Text("I 5 archi con peso maggiore", color="orange"))
-        for u,v,peso in lista:
-            self._view.txt_result.controls.append(ft.Text(f"{str(u)} -- {str(v)}     (peso={peso})"))
-        self._view.txt_result.controls.append(ft.Text((f"Il grafo ha {numero} componenti connesse"), color="orange"))
-        self._view.txt_result.controls.append(ft.Text(f"Nodi della componente connessa più grande ({len(piuGrande)} nodi)", color="orange"))
-        for n in piuGrande:
-            self._view.txt_result.controls.append(ft.Text(f"{str(n)}"))
+        top5, numero, massima = self._model.archiPesati()
+        self._view.txt_result.controls.append(ft.Text(f"I cinque archi con peso maggiore: ", color="pink"))
+        for u,v,peso in top5:
+            self._view.txt_result.controls.append(ft.Text(f"{u} - {v} --> peso= {peso}"))
+        self._view.txt_result.controls.append(ft.Text(f"Il grafo ha {numero} componenti connesse", color="pink"))
+        self._view.txt_result.controls.append(ft.Text(f"La componente connessa più grande ha {len(massima)} nodi", color="pink"))
+        for n in massima:
+            self._view.txt_result.controls.append(ft.Text(f"{n}"))
         self._view.update_page()
 
 
     def handleCammino(self, e):
-        bestPath = self._model.bestPath()
-        if len(bestPath) == 0:
-            self._view.txt_result.controls.append(ft.Text("Cammino non trovato", color="orange"))
+        cammino = self._model.bestCammino()
+        if len(cammino)==0:
+            self._view.txt_result.controls.append(ft.Text(f"Cammino semplice di lunghezza massima non trovato", color="red"))
             self._view.update_page()
-            return
-        self._view.txt_result.controls.append(ft.Text("Cammino semplie di lunghezza massima", color="pink"))
-        self._view.txt_result.controls.append(ft.Text(f"Il cammino ha {len(bestPath)} nodi", color="pink"))
-        for n in bestPath:
-            self._view.txt_result.controls.append(ft.Text(f"{str(n)}"))
+        self._view.txt_result.controls.append(
+            ft.Text(f"Attori del cammino semplice di lunghezza massima", color="orange"))
+        for n in cammino:
+            self._view.txt_result.controls.append(ft.Text(f"{n}"))
         self._view.update_page()
